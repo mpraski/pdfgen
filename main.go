@@ -52,7 +52,7 @@ func Router() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.StripSlashes)
 	r.Use(middleware.Logger)
-	r.Use(middleware.DefaultCompress)
+	r.Use(middleware.Compress(5, "gzip"))
 	r.HandleFunc("/{template}", APIHandler)
 	return r
 }

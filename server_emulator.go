@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 
 	"github.com/flosch/pongo2"
-	"github.com/go-chi/chi"
 )
 
 // ServerEmulator is a temporary http server only for wkhtmltopdf to download
@@ -44,11 +43,14 @@ func NewServerEmulator(d map[string]interface{}, t *Template) *ServerEmulator {
 		Data: d,
 		Tmpl: t,
 	}
-	r := chi.NewRouter()
+
+	r := http.NewServeMux()
+	r.Handle("/", http.FileServer(http.Dir(s.Tmpl.RootDir)))
 	r.HandleFunc("/main", s.HandleTemplate(s.Tmpl.Index))
 	r.HandleFunc("/header", s.HandleTemplate(s.Tmpl.Header))
 	r.HandleFunc("/footer", s.HandleTemplate(s.Tmpl.Footer))
-	r.Mount("/", http.FileServer(http.Dir(s.Tmpl.RootDir)))
+
 	s.ts = httptest.NewServer(r)
+
 	return s
 }

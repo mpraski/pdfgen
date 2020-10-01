@@ -20,59 +20,54 @@ type Template struct {
 
 // BuildParams creates the params for wkhtmltopdf
 func (t *Template) BuildParams(url string) []string {
-	params := []string{
-		fmt.Sprintf("%s/main", url),
-		// "--disable-smart-shrinking",
-	}
+	params := []string{fmt.Sprintf("%s/main", url)}
 
 	if t.Footer != nil {
 		params = append(params, "--footer-html", fmt.Sprintf("%s/footer", url))
 	}
+
 	if t.Header != nil {
 		params = append(params, "--header-html", fmt.Sprintf("%s/header", url))
 	}
+
 	params = append(params, "-")
+
 	return params
 }
 
 // WritePDF executes wkhtmltopdf with the correct params and
 // writes the output to the provided io.Writer
-func (t *Template) WritePDF(baseURL string, w io.Writer) error {
-	params := t.BuildParams(baseURL)
-	cmd := exec.Command("wkhtmltopdf", params...)
-	output, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
+func (t *Template) WritePDF(baseURL string, out io.Writer) error {
+	var (
+		params = t.BuildParams(baseURL)
+		cmd    = exec.Command("wkhtmltopdf", params...)
+	)
 
-	errChan := make(chan error)
+	cmd.Stdout = out
+
 	if err := cmd.Start(); err != nil {
 		return err
 	}
 
-	go func() {
-		_, err := io.Copy(w, output)
-		errChan <- err
-	}()
-
-	if err := <-errChan; err != nil {
-		return err
-	}
 	return cmd.Wait()
 }
 
 func loadFileIfExists(root, htmlPth string) (*pongo2.Template, error) {
 	jpth := filepath.Join(root, htmlPth)
+
 	if _, err := os.Stat(jpth); os.IsNotExist(err) {
 		return nil, nil
 	}
+
 	return pongo2.FromFile(jpth)
 }
 
 // NewTemplate creates and initialize a template from a path
 func NewTemplate(root, path string) (*Template, error) {
 	root = filepath.Join(root, path)
+
 	t := &Template{RootDir: root}
+
 	var err error
 
 	if t.Index, err = loadFileIfExists(root, "index.html"); err != nil {
@@ -84,5 +79,6 @@ func NewTemplate(root, path string) (*Template, error) {
 	} else if t.Footer, err = loadFileIfExists(root, "footer.html"); err != nil {
 		return nil, err
 	}
+
 	return t, nil
 }
