@@ -3,8 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -39,7 +42,16 @@ func APIHandler(w http.ResponseWriter, r *http.Request) {
 		srv := NewServerEmulator(data, tmpl)
 		defer srv.Close()
 
-		if err := tmpl.WritePDF(srv.BaseURL(), w); err != nil {
+		o, n, err := tmpl.WritePDF(srv.BaseURL())
+		if err != nil {
+			log.Print(err)
+			statError(w, http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Length", strconv.FormatInt(n, 10))
+
+		if _, err := io.CopyN(w, o, n); err != nil {
 			log.Print(err)
 			statError(w, http.StatusInternalServerError)
 		}
@@ -52,7 +64,7 @@ func Router() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.StripSlashes)
 	r.Use(middleware.Logger)
-	r.Use(middleware.Compress(5, "gzip"))
+	//r.Use(middleware.Compress(5, "application/pdf"))
 	r.HandleFunc("/{template}", APIHandler)
 	return r
 }
@@ -63,8 +75,20 @@ func main() {
 	}
 
 	addr := fmt.Sprintf("%s:%d", viper.GetString("addr"), viper.GetInt("port"))
+
 	log.Printf("accepting connections on %s", addr)
-	if err := http.ListenAndServe(addr, Router()); err != nil {
+
+	const timeout = 5 * time.Minute
+
+	server := &http.Server{
+		Addr:         addr,
+		ReadTimeout:  timeout,
+		WriteTimeout: timeout,
+		IdleTimeout:  timeout,
+		Handler:      Router(),
+	}
+
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -37,19 +38,25 @@ func (t *Template) BuildParams(url string) []string {
 
 // WritePDF executes wkhtmltopdf with the correct params and
 // writes the output to the provided io.Writer
-func (t *Template) WritePDF(baseURL string, out io.Writer) error {
+func (t *Template) WritePDF(baseURL string) (io.Reader, int64, error) {
 	var (
 		params = t.BuildParams(baseURL)
 		cmd    = exec.Command("wkhtmltopdf", params...)
+		buf    = bytes.NewBuffer(make([]byte, 0, 10*1000*1024))
+		mon    = newMonitorWriter(buf)
 	)
 
-	cmd.Stdout = out
+	cmd.Stdout = mon
 
 	if err := cmd.Start(); err != nil {
-		return err
+		return nil, 0, err
 	}
 
-	return cmd.Wait()
+	if err := cmd.Wait(); err != nil {
+		return nil, 0, err
+	}
+
+	return buf, mon.Total(), nil
 }
 
 func loadFileIfExists(root, htmlPth string) (*pongo2.Template, error) {
