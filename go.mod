@@ -1,4 +1,4 @@
-module github.com/hyperboloide/pdfgen
+module github.com/mpraski/pdfgen
 
 go 1.15
 

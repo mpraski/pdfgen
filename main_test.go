@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
 
-	. "github.com/hyperboloide/pdfgen"
+	. "github.com/mpraski/pdfgen"
 )
 
 var _ = Describe("Main", func() {

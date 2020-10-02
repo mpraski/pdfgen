@@ -1,5 +1,5 @@
 NAME = pdfgen
-DOCKERID = hyperboloide
+DOCKERID = mpraski
 
 all: container
 
